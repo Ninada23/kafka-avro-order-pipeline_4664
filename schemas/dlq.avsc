@@ -1,0 +1,15 @@
+{
+  "type": "record",
+  "name": "DLQMessage",
+  "namespace": "com.assignment.kafka",
+  "doc": "Envelope wrapping a message that permanently failed processing.",
+  "fields": [
+    { "name": "originalTopic", "type": "string" },
+    { "name": "partition", "type": "int" },
+    { "name": "offset", "type": "long" },
+    { "name": "errorReason", "type": "string" },
+    { "name": "retryCount", "type": "int" },
+    { "name": "timestamp", "type": "string", "doc": "ISO-8601 UTC timestamp of when the message was dead-lettered" },
+    { "name": "originalPayload", "type": "bytes", "doc": "Raw bytes of the original (undecodable or unprocessable) message" }
+  ]
+}

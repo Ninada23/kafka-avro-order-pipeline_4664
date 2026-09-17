@@ -1,0 +1,2 @@
+confluent-kafka==2.15.1
+fastavro==1.12.2
