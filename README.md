@@ -89,8 +89,9 @@ python -m producer.producer -n 50 -i 0.5   # 50 messages, 0.5s apart
 
 | Knob (env var) | Default | Effect |
 |---|---|---|
-| `CORRUPT_MESSAGE_PROBABILITY` | 0.1 | Producer sends a non-Avro payload -> consumer fails to deserialize -> **permanent failure, straight to DLQ, no retries** |
-| `TRANSIENT_FAILURE_PROBABILITY` | 0.3 | Consumer's simulated downstream call randomly throws `TransientError` -> **retried with exponential backoff** up to `MAX_RETRIES`, then DLQ if still failing |
+| `CORRUPT_MESSAGE_PROBABILITY` | 0.1 | Producer sends a non-Avro payload -> consumer fails to deserialize -> **permanent failure, straight to DLQ, no retries** (`avro_deserialize_error`) |
+| `INVALID_DATA_PROBABILITY` | 0.1 | Producer sends a valid Avro message with a negative price -> consumer's validation step rejects it -> **permanent failure, straight to DLQ, no retries** (`validation_error`) |
+| `TRANSIENT_FAILURE_PROBABILITY` | 0.3 | Consumer's simulated downstream call randomly throws `TransientError` -> **retried with exponential backoff** up to `MAX_RETRIES`, then DLQ if still failing (`max_retries_exceeded`) |
 | `MAX_RETRIES` | 3 | Max retry attempts before a transient failure is treated as permanent |
 | `RETRY_BACKOFF_BASE_SECONDS` | 1 | Backoff doubles each attempt: 1s, 2s, 4s, ... |
 
@@ -101,9 +102,10 @@ $env:TRANSIENT_FAILURE_PROBABILITY = "0.6"
 python -m consumer.consumer
 ```
 
-Validation failures (empty `orderId`/`product`, non-positive `price`) are
-also treated as permanent and go straight to the DLQ, since retrying
-wouldn't change bad data.
+This gives three distinct DLQ reasons you can point out in a demo:
+`avro_deserialize_error` (corrupt bytes), `validation_error` (well-formed
+Avro but bad data, e.g. negative price), and `max_retries_exceeded`
+(transient failures that never recovered).
 
 ## Project layout
 

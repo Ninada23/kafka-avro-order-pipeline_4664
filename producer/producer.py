@@ -33,6 +33,15 @@ def make_order(seq: int) -> dict:
     }
 
 
+def make_invalid_order(seq: int) -> dict:
+    """A well-formed Avro record but with business-invalid data (negative
+    price). Decodes fine, so it's the consumer's validate_order() step -
+    not Avro - that must catch it."""
+    order = make_order(seq)
+    order["price"] = -order["price"]
+    return order
+
+
 def main():
     parser = argparse.ArgumentParser(description="Kafka Avro order producer")
     parser.add_argument("-n", "--num-messages", type=int, default=0,
@@ -48,16 +57,29 @@ def main():
     try:
         while args.num_messages == 0 or seq < args.num_messages:
             seq += 1
-            order = make_order(seq)
+            roll = random.random()
 
-            if random.random() < config.CORRUPT_MESSAGE_PROBABILITY:
+            if roll < config.CORRUPT_MESSAGE_PROBABILITY:
                 # Simulate a permanently malformed message (e.g. a producer bug
                 # or upstream data corruption). This is NOT valid Avro, so the
                 # consumer can never successfully decode it -> DLQ, no retries.
+                order = make_order(seq)
                 payload = f"NOT-AVRO-{uuid.uuid4()}".encode("utf-8")
-                print(f"[producer] >>> sending CORRUPT payload for orderId={order['orderId']}")
-            else:
+                print(f"[producer] >>> orderId={order['orderId']} product={order['product']:<6} "
+                      f"price={order['price']:>7.2f}  [CORRUPT / not valid Avro]")
+            elif roll < config.CORRUPT_MESSAGE_PROBABILITY + config.INVALID_DATA_PROBABILITY:
+                # Valid Avro, but business-invalid (negative price). The
+                # consumer's validation step - not Avro decoding - must catch
+                # this -> DLQ, no retries.
+                order = make_invalid_order(seq)
                 payload = serialize(schema, order)
+                print(f"[producer] >>> orderId={order['orderId']} product={order['product']:<6} "
+                      f"price={order['price']:>7.2f}  [INVALID / negative price]")
+            else:
+                order = make_order(seq)
+                payload = serialize(schema, order)
+                print(f"[producer] orderId={order['orderId']} product={order['product']:<6} "
+                      f"price={order['price']:>7.2f}")
 
             producer.produce(
                 config.ORDERS_TOPIC,
