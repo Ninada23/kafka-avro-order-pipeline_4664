@@ -6,15 +6,6 @@ aggregation**, **retry logic for transient failures**, and a **Dead Letter Queue
 
 ## Architecture
 
-```
-producer.py --(Avro "Order")--> [orders topic] --> consumer.py --> running average
-                                                          |
-                                                          | (parse error / bad data /
-                                                          |  retries exhausted)
-                                                          v
-                                                [orders-dlq topic] <-- dlq_viewer.py
-```
-
 - **Producer** (`producer/producer.py`): generates random orders, serializes them
   with the `order.avsc` schema, and publishes to the `orders` topic. It
   occasionally emits a deliberately corrupt (non-Avro) payload to simulate a
